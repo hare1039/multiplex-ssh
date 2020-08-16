@@ -1,0 +1,4 @@
+/build*
+remote
+multiplex-tcp
+*.dSYM
