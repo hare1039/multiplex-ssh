@@ -169,20 +169,22 @@ public:
                         start_read_process();
                     }
                     else
-                        start_read_process_body(chan, size);
+                    {
+                        std::shared_ptr<connection<server>> conn;
+                        auto it = channel_used_.find(chan);
+                        if (it != channel_used_.end())
+                            conn = it->second;
+
+                        start_read_process_body(conn, size);
+                    }
                 }
             });
     }
 
-    void start_read_process_body(mux::channel_id_t id, std::size_t bytes_transferred)
+    void start_read_process_body(std::shared_ptr<connection<server>> conn, std::size_t bytes_transferred)
     {
-        BOOST_LOG_TRIVIAL(trace) << "[multiplex] start_read_process_body, id: " << id;
+        BOOST_LOG_TRIVIAL(trace) << "[multiplex] start_read_process_body, id: " << conn->channel();
         mux::chunk_ptr buf = std::make_shared<mux::chunk>(bytes_transferred);
-        std::shared_ptr<connection<server>> conn;
-
-        auto it = channel_used_.find(id);
-        if (it != channel_used_.end())
-            conn = it->second;
 
         boost::asio::async_read(
             process_output_,
@@ -197,7 +199,8 @@ public:
                 }
                 else
                 {
-                    conn->post(buf);
+                    if (conn)
+                        conn->post(buf);
                     start_read_process();
                 }
             });
