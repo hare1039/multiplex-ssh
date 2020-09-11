@@ -1,28 +1,25 @@
-# wait-until
-This program helps you run a command when a keyword or regex appears.
+# multiplex-ssh
+This program helps you combine multiple tcp connection into 1.
 
+Typical scenario is making a ssh server that do not allow TCP Forwarding to forward your connection.
 
-```
-./build-mac/bin/wait-until --help
-Allowed options:
-  --help                produce help message
-  --run arg             Monitor this command
-  --regex arg           Wait until this regex shows up
-  --command arg         Run this command when keyword shows up
-```
+# Binaries
+This repo contains 2 programs: `multiplex-tcp` and `remote`
+
+Please put the `remote` on the remote ssh server
 
 # example
-
 ```
-$ cat socat-chisel.sh
-wait-until --run "chisel client --keepalive 30s https://ssh.hare1039.nctu.me/ 10000:localhost:22" \
-           --regex '.*Connected.*' -- \
-           socat - TCP-CONNECT:127.0.0.1:10000,RETRY=600
+# on no.forward.ssh.server.com
+# run an http proxy on 8000
+./glider -listen 8000
+
+# on local machine run
+# This execute the 'ssh no.forward.ssh.server.com ./remote --to localhost:8000'
+# And the remote ssh server will run             './remote --to localhost:8000'
+./multiplex-tcp --run 'ssh no.forward.ssh.server.com ./remote --to localhost:8000' --listen 3128
+
+# now you can have your proxy ready on :3128 on your local machine
+curl -x http://localhost:3128 ifconfig.me
 ```
-
-Run `chisel client --keepalive 30s https://ssh.hare1039.nctu.me/ 10000:localhost:22`
-
-When 'Connected' appeared in stdout, run `socat - TCP-CONNECT:127.0.0.1:10000,RETRY=600`
-
-Now you can connect your ssh server through a http server: `ssh -o "ProxyCommand=socat-chisel.sh" hare1039@127.0.0.1`
 
