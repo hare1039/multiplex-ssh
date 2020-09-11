@@ -4,10 +4,23 @@ LINUX_HEADER_arm=-I/Volumes/transcend/programs/linux-header/arm/include
 LINUX_HEADER_i386=-I/Volumes/transcend/programs/linux-header/i386/include
 VERBOSE=-DCMAKE_VERBOSE_MAKEFILE=ON
 
+CC ?= cc
+CXX ?= c++
+
 .PHONY: release release-mac release-linux-x86_64 release-linux-arm release-win
 
 release: release-mac release-linux-x86_64 release-linux-arm release-win
 	echo "build all"
+
+release-native:
+	mkdir -p build-native && \
+    cd build-native && \
+    conan install .. --profile ../profiles/release-native --build missing && \
+    cmake .. -GNinja \
+             -DCMAKE_BUILD_TYPE=Release \
+             -DCMAKE_C_COMPILER=${CC}   \
+             -DCMAKE_CXX_COMPILER=${CXX} && \
+    cmake --build .
 
 release-mac:
 	mkdir -p build-mac && \
@@ -57,11 +70,11 @@ release-win-x86_64:
     cmake --build .
 
 multiplex-tcp: multiplex-tcp.cpp basic.hpp
-	clang++ -std=c++17 -g -o multiplex-tcp multiplex-tcp.cpp -DBOOST_LOG_DYN_LINK \
+	${CXX} -std=c++17 -g -o multiplex-tcp multiplex-tcp.cpp -DBOOST_LOG_DYN_LINK \
             -lboost_system -lboost_program_options -lboost_filesystem -lboost_log-mt -lboost_thread-mt
 
 remote: remote.cpp basic.hpp
-	clang++ -std=c++17 -g -o remote remote.cpp -DBOOST_LOG_DYN_LINK \
+	${CXX} -std=c++17 -g -o remote remote.cpp -DBOOST_LOG_DYN_LINK \
             -lboost_system -lboost_program_options -lboost_filesystem -lboost_log-mt -lboost_thread-mt
 
 clean:
