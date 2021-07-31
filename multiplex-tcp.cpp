@@ -155,7 +155,7 @@ public:
                 if (error)
                 {
                     if (error != boost::asio::error::eof)
-                        BOOST_LOG_TRIVIAL(error) << "[multiplex] process header read error: " << error.message();
+                        BOOST_LOG_TRIVIAL(error) << "[multiplex] start_read_process error: " << error.message();
                     process_output_close();
                 }
                 else
@@ -208,7 +208,8 @@ public:
 
     void process_output_close()
     {
-        boost::asio::post(io_context_, [this] { process_output_.close(); });
+        BOOST_LOG_TRIVIAL(trace) << "[multiplex] process_output_close";
+        boost::asio::post(io_context_, [this] { process_output_.close(); io_context_.stop(); });
     }
 };
 
@@ -221,11 +222,13 @@ int main(int argc, char* argv[])
     {
         std::string run_argv;
         int listen_port;
+        bool trace_log;
         po::options_description desc("Allowed options");
         desc.add_options()
             ("help", "produce help message")
             ("run", po::value<std::string>(&run_argv)->required(), "For every connection, run this command and attach stdin/stdout")
             ("listen", po::value<int>(&listen_port)->required(), "listen on this port")
+            ("trace", po::value<bool>(&trace_log)->default_value(false)->implicit_value(true), "print trace messages")
             ;
 
         po::positional_options_description p;
@@ -240,6 +243,9 @@ int main(int argc, char* argv[])
         }
 
         po::notify(vm);
+        if (trace_log)
+            boost::log::core::get()->set_filter(boost::log::trivial::severity >= boost::log::trivial::trace);
+
         boost::asio::io_context io;
 
         server s {io, listen_port, run_argv};
