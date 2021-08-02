@@ -29,7 +29,7 @@ class queued_stream : public std::enable_shared_from_this<queued_stream<Containe
                                                    std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof)
+                    if (error != boost::asio::error::eof || error != boost::asio::error::bad_descriptor)
                         BOOST_LOG_TRIVIAL(error) << "write stream error: " << error.message();
                     close();
                 }
@@ -37,9 +37,7 @@ class queued_stream : public std::enable_shared_from_this<queued_stream<Containe
                 {
                     send_queue_.pop_front();
                     if (not send_queue_.empty())
-                    {
                         start_writing_stream();
-                    }
                 }
             });
     }
@@ -62,6 +60,7 @@ public:
     virtual
     void close()
     {
+        BOOST_LOG_TRIVIAL(info) << "write stream closed";
         boost::asio::post(io_context_, [this] { stream_.close(); });
     }
 

@@ -12,7 +12,7 @@ class connection : public mux::queued_stream<boost::asio::ip::tcp::socket>
     boost::asio::ip::tcp::socket socket_;
     mux::channel_id_t channel_;
     Server & server_;
-    bool is_closed = false;
+    bool is_closed_ = false;
 
 public:
     connection(boost::asio::io_context& io, mux::channel_id_t id, Server & s):
@@ -34,7 +34,7 @@ public:
                                                                      std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof)
+                    if (error != boost::asio::error::eof || error != boost::asio::error::operation_aborted)
                         BOOST_LOG_TRIVIAL(error) << "[multiplex] start_read_socket error: " << error.message();
                     close();
                 }
@@ -50,7 +50,7 @@ public:
 
     void close() override
     {
-        if (!is_closed)
+        if (!is_closed_)
             boost::asio::post(io_context_,
                               [self=cast_shared_from_this<this_t>()] {
                                   mux::chunk_ptr buf = std::make_shared<mux::chunk>();
@@ -58,7 +58,7 @@ public:
                                   self->server_.post(buf);
                                   self->socket_.close();
                                   self->queued_stream::close();
-                                  self->is_closed = true;
+                                  self->is_closed_ = true;
                               });
     }
 
@@ -250,6 +250,7 @@ int main(int argc, char* argv[])
 
         server s {io, listen_port, run_argv};
 
+        BOOST_LOG_TRIVIAL(info) << "Start handling requests";
         io.run();
 
 //        boost::thread_group tg;

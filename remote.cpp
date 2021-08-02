@@ -56,7 +56,7 @@ public:
                                                         std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof)
+                    if (error != boost::asio::error::eof || error != boost::asio::error::operation_aborted)
                         BOOST_LOG_TRIVIAL(error) << "[remote] start_read_socket error: " << error.message();
                     self->close();
                 }
@@ -116,7 +116,7 @@ public:
                          std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof)
+                    if (error != boost::asio::error::eof || error != boost::asio::error::operation_aborted)
                         BOOST_LOG_TRIVIAL(error) << "[remote] stdin read error: " << error.message();
                     close();
                 }
@@ -183,7 +183,7 @@ public:
 
     void close()
     {
-        BOOST_LOG_TRIVIAL(trace) << "[remote] closed";
+        BOOST_LOG_TRIVIAL(info) << "[remote] closed";
         boost::asio::post(io_context_, [this] { stdin_.close(); });
     }
 };
