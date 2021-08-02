@@ -29,7 +29,7 @@ class queued_stream : public std::enable_shared_from_this<queued_stream<Containe
                                                    std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof || error != boost::asio::error::bad_descriptor)
+                    if (not mux::is_common_error(error))
                         BOOST_LOG_TRIVIAL(error) << "write stream error: " << error.message();
                     close();
                 }

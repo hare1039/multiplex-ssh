@@ -66,6 +66,14 @@ void encode_header(chunk_ptr buf, channel_id_t channel, length_t size)
     std::memcpy(buf->data() + sizeof channel, &size, sizeof size);
 }
 
+bool is_common_error(boost::system::error_code const &error)
+{
+    return
+        error == boost::asio::error::eof ||
+        error == boost::asio::error::operation_aborted ||
+        error == boost::asio::error::bad_descriptor;
+}
+
 void init_log()
 {
     boost::log::add_common_attributes();

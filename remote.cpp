@@ -56,7 +56,7 @@ public:
                                                         std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof || error != boost::asio::error::operation_aborted)
+                    if (not mux::is_common_error(error))
                         BOOST_LOG_TRIVIAL(error) << "[remote] start_read_socket error: " << error.message();
                     self->close();
                 }
@@ -116,7 +116,7 @@ public:
                          std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof || error != boost::asio::error::operation_aborted)
+                    if (not mux::is_common_error(error))
                         BOOST_LOG_TRIVIAL(error) << "[remote] stdin read error: " << error.message();
                     close();
                 }
@@ -161,7 +161,7 @@ public:
                                std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof)
+                    if (not mux::is_common_error(error))
                         BOOST_LOG_TRIVIAL(error) << "[remote] start_read_stdin_body error: " << error.message() ;
                     close();
                 }

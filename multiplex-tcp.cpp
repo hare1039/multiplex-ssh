@@ -34,7 +34,7 @@ public:
                                                                      std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof || error != boost::asio::error::operation_aborted)
+                    if (not mux::is_common_error(error))
                         BOOST_LOG_TRIVIAL(error) << "[multiplex] start_read_socket error: " << error.message();
                     close();
                 }
@@ -154,7 +154,7 @@ public:
                          std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof)
+                    if (not mux::is_common_error(error))
                         BOOST_LOG_TRIVIAL(error) << "[multiplex] start_read_process error: " << error.message();
                     process_output_close();
                 }
@@ -193,7 +193,7 @@ public:
                                std::size_t bytes_transferred) {
                 if (error)
                 {
-                    if (error != boost::asio::error::eof)
+                    if (not mux::is_common_error(error))
                         BOOST_LOG_TRIVIAL(error) << "[multiplex] process body read error: " << error.message();
                     process_output_close();
                 }
