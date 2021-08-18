@@ -8,6 +8,12 @@
 #include <cstring>
 #include <memory>
 
+// boost/proto/expr.hpp:140:44: warning in clang
+#if defined(__clang__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wunknown-warning-option"
+#endif
+
 #include <boost/asio.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/filesystem.hpp>
@@ -32,10 +38,10 @@
 namespace mux
 {
 
-using channel_id_t = std::uint16_t;
-using length_t = std::uint16_t;
+using channel_id_t = std::uint32_t;
+using length_t = std::uint32_t;
 int constexpr headersize = sizeof (channel_id_t) + sizeof (length_t);
-int constexpr bufsize = 4096;
+int constexpr bufsize = 64 * 1024;
 int constexpr bodysize = bufsize - headersize;
 
 using header_buf = std::array<std::uint8_t, headersize>;

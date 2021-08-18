@@ -69,11 +69,11 @@ release-win-x86_64:
              -DCMAKE_CXX_FLAGS="${RELEASE_FLAGS}" && \
     cmake --build .
 
-multiplex-tcp: multiplex-tcp.cpp basic.hpp
+multiplex-tcp: multiplex-tcp.cpp basic.hpp queued_stream.hpp
 	${CXX} -std=c++17 -g -o multiplex-tcp multiplex-tcp.cpp -DBOOST_LOG_DYN_LINK \
             -lboost_system -lboost_program_options -lboost_filesystem -lboost_log-mt -lboost_thread-mt
 
-remote: remote.cpp basic.hpp
+remote: remote.cpp basic.hpp queued_stream.hpp
 	${CXX} -std=c++17 -g -o remote remote.cpp -DBOOST_LOG_DYN_LINK \
             -lboost_system -lboost_program_options -lboost_filesystem -lboost_log-mt -lboost_thread-mt
 

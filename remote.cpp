@@ -8,6 +8,7 @@ class connection : public mux::queued_stream<boost::asio::ip::tcp::socket>
 {
     using this_t = connection<Server>;
     boost::asio::io_context& io_context_;
+    boost::asio::io_context::strand io_strand_;
     boost::asio::ip::tcp::socket socket_;
     mux::channel_id_t channel_;
     Server & server_;
@@ -16,12 +17,13 @@ class connection : public mux::queued_stream<boost::asio::ip::tcp::socket>
 public:
     connection(boost::asio::io_context& io, mux::channel_id_t id, Server & s):
         io_context_{io},
+        io_strand_{io},
         socket_{io},
         channel_{id},
         server_{s},
         queued_stream{io, socket_}
     {
-        queued_stream::lock();
+        queued_stream::pause();
     }
 
     ~connection() { server_.remove_channel(channel_); }
@@ -41,7 +43,7 @@ public:
                 else
                 {
                     self->start_read_socket();
-                    self->queued_stream::unlock();
+                    self->queued_stream::resume();
                 }
             });
     }
@@ -73,7 +75,7 @@ public:
     void close() override
     {
         if (!is_closed)
-            boost::asio::post(io_context_,
+            boost::asio::post(io_strand_,
                               [self=cast_shared_from_this<this_t>()] {
                                   mux::chunk_ptr buf = std::make_shared<mux::chunk>();
                                   mux::encode_header(buf, self->channel_, 0);
@@ -91,6 +93,7 @@ public:
 class server
 {
     boost::asio::io_context &io_context_;
+    boost::asio::io_context::strand io_strand_;
     boost::asio::ip::tcp::resolver::results_type endpoints_;
     boost::asio::posix::stream_descriptor stdin_, stdout_;
     std::unordered_map<mux::channel_id_t, std::shared_ptr<connection<server>>> channel_used_;
@@ -99,6 +102,7 @@ class server
 public:
     server(boost::asio::io_context & io, boost::asio::ip::tcp::resolver::results_type endpoints):
         io_context_{io},
+        io_strand_{io},
         endpoints_{endpoints},
         stdin_{io, ::dup(STDIN_FILENO)},
         stdout_{io, ::dup(STDOUT_FILENO)},
@@ -184,7 +188,7 @@ public:
     void close()
     {
         BOOST_LOG_TRIVIAL(info) << "[remote] closed";
-        boost::asio::post(io_context_, [this] { stdin_.close(); });
+        boost::asio::post(io_strand_, [this] { stdin_.close(); });
     }
 };
 
@@ -224,13 +228,11 @@ int main(int argc, char* argv[])
 
         server s {io, endpoints};
 
-        io.run();
+        boost::thread_group tg;
+        for (int i = 0; i < std::thread::hardware_concurrency(); i++)
+            tg.create_thread([&io]{ io.run(); });
 
-//        boost::thread_group tg;
-//        for (int i = 0; i < std::thread::hardware_concurrency(); i++)
-//            tg.create_thread([&io]{ io.run(); });
-//
-//        tg.join_all();
+        tg.join_all();
     }
     catch(std::exception const& e)
     {

@@ -14,10 +14,11 @@ namespace detail
 template<typename ContainerPointer, typename AsyncWriteStream>
 class queued_stream : public std::enable_shared_from_this<queued_stream<ContainerPointer, AsyncWriteStream>>
 {
+    boost::asio::io_context::strand strand_;
     boost::asio::io_context& io_context_;
     std::deque<ContainerPointer> send_queue_;
     AsyncWriteStream& stream_;
-    bool locked = false;
+    std::atomic<bool> paused_ = true;
 
     void start_writing_stream()
     {
@@ -44,7 +45,7 @@ class queued_stream : public std::enable_shared_from_this<queued_stream<Containe
 
 public:
     queued_stream(boost::asio::io_context& io, AsyncWriteStream& aws):
-        io_context_{io}, stream_{aws} {}
+        strand_{io}, io_context_{io}, stream_{aws} {}
 
     virtual
     ~queued_stream() {}
@@ -53,7 +54,7 @@ public:
     {
         bool is_writing = not send_queue_.empty();
         send_queue_.push_back(chk);
-        if (not locked and not is_writing)
+        if (not paused_ and not is_writing)
             start_writing_stream();
     }
 
@@ -61,13 +62,13 @@ public:
     void close()
     {
         BOOST_LOG_TRIVIAL(info) << "write stream closed";
-        boost::asio::post(io_context_, [this] { stream_.close(); });
+        boost::asio::post(strand_, [this] { stream_.close(); });
     }
 
-    void lock() { locked = true; }
-    void unlock()
+    void pause() { paused_.store(true); }
+    void resume()
     {
-        locked = false;
+        paused_.store(false);
         if (not send_queue_.empty())
             start_writing_stream();
     }

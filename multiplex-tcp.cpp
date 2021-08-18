@@ -9,6 +9,7 @@ class connection : public mux::queued_stream<boost::asio::ip::tcp::socket>
 {
     using this_t = connection<Server>;
     boost::asio::io_context& io_context_;
+    boost::asio::io_context::strand io_strand_;
     boost::asio::ip::tcp::socket socket_;
     mux::channel_id_t channel_;
     Server & server_;
@@ -17,6 +18,7 @@ class connection : public mux::queued_stream<boost::asio::ip::tcp::socket>
 public:
     connection(boost::asio::io_context& io, mux::channel_id_t id, Server & s):
         io_context_{io},
+        io_strand_{io},
         socket_{io},
         channel_{id},
         server_{s},
@@ -51,7 +53,7 @@ public:
     void close() override
     {
         if (!is_closed_)
-            boost::asio::post(io_context_,
+            boost::asio::post(io_strand_,
                               [self=cast_shared_from_this<this_t>()] {
                                   mux::chunk_ptr buf = std::make_shared<mux::chunk>();
                                   mux::encode_header(buf, self->channel_, 0);
@@ -134,7 +136,7 @@ public:
     void remove_channel(mux::channel_id_t id)
     {
         boost::asio::post(
-            io_context_,
+            io_strand_,
             [this, id] {
                 BOOST_LOG_TRIVIAL(trace) << "[multiplex] removed_channel: " << id;
                 channel_used_.erase(id);
@@ -209,7 +211,7 @@ public:
     void process_output_close()
     {
         BOOST_LOG_TRIVIAL(trace) << "[multiplex] process_output_close";
-        boost::asio::post(io_context_, [this] { process_output_.close(); io_context_.stop(); });
+        boost::asio::post(io_strand_, [this] { process_output_.close(); io_context_.stop(); });
     }
 };
 
@@ -251,13 +253,13 @@ int main(int argc, char* argv[])
         server s {io, listen_port, run_argv};
 
         BOOST_LOG_TRIVIAL(info) << "Start handling requests";
-        io.run();
 
-//        boost::thread_group tg;
-//        for (int i = 0; i < std::thread::hardware_concurrency(); i++)
-//            tg.create_thread([&io]{ io.run(); });
-//
-//        tg.join_all();
+        boost::thread_group tg;
+        for (int i = 0; i < std::thread::hardware_concurrency(); i++)
+            BOOST_LOG_TRIVIAL(trace) << "[multiplex] start thread: " << i;
+            tg.create_thread([&io]{ io.run(); });
+
+        tg.join_all();
     }
     catch(std::exception const& e)
     {
